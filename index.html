@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Happy Diwali ✨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --bg: #0a0c10;
+  --gold: #ffd966;
+  --gold-2: #ffb347;
+  --gold-3: #e08e2e;
+  --cream: #fff5e6;
+  --magenta: #ff4d8f;
+  --cyan: #4dd0ff;
+  --glass: rgba(10, 15, 25, 0.72);
+  --border: rgba(255, 215, 100, 0.3);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Poppins', system-ui, sans-serif;
+  color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ CANVAS FIREWORKS ============ */
+#fireworks {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Soft radial ambient behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 120%, rgba(255, 140, 40, 0.12), transparent 60%),
+              radial-gradient(circle at 20% 10%, rgba(255, 200, 80, 0.06), transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 77, 143, 0.05), transparent 50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ============ SOUND TOGGLE ============ */
+.sound-toggle {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 300;
+  box-shadow: 0 0 25px rgba(255, 180, 60, 0.25);
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+.sound-toggle:hover { transform: scale(1.1); box-shadow: 0 0 35px rgba(255, 200, 0, 0.6); }
+.sound-toggle.muted { color: #666; border-color: rgba(255,255,255,0.15); box-shadow: none; }
+
+/* ============ STAGE ============ */
+.stage {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ============ 1. NAME CARD ============ */
+.name-card {
+  position: absolute;
+  width: min(90%, 520px);
+  padding: 48px 40px;
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.9),
+              0 0 0 1px rgba(255, 215, 100, 0.1) inset,
+              0 0 60px rgba(255, 170, 40, 0.15);
+  text-align: center;
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+  z-index: 20;
+}
+.name-card.hide {
+  opacity: 0;
+  transform: scale(0.94) translateY(-10px);
+  pointer-events: none;
+}
+
+.name-card .diya {
+  font-size: 3.5rem;
+  display: block;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 25px var(--gold-2));
+  animation: floatGlow 2.6s ease-in-out infinite;
+}
+@keyframes floatGlow {
+  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 20px var(--gold-2)); }
+  50% { transform: translateY(-8px) scale(1.05); filter: drop-shadow(0 0 40px var(--gold)); }
+}
+
+.name-card h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #ffe9a8, var(--gold-2), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 8px;
+  text-shadow: 0 0 40px rgba(255, 180, 60, 0.4);
+}
+.name-card p.hint {
+  color: #bba88a;
+  font-size: 0.95rem;
+  margin-bottom: 26px;
+  letter-spacing: 0.5px;
+}
+
+.name-card input {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 1.15rem;
+  font-family: 'Poppins', sans-serif;
+  color: var(--cream);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 215, 100, 0.25);
+  border-radius: 16px;
+  outline: none;
+  transition: border 0.3s, box-shadow 0.3s, background 0.3s;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.name-card input::placeholder {
+  color: rgba(255, 235, 200, 0.35);
+  font-weight: 300;
+}
+.name-card input:focus {
+  border-color: var(--gold-2);
+  background: rgba(255, 200, 80, 0.06);
+  box-shadow: 0 0 25px rgba(255, 180, 60, 0.3);
+}
+
+.name-card button {
+  margin-top: 24px;
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #1a1206;
+  background: linear-gradient(135deg, var(--gold), var(--gold-2), var(--gold-3));
+  background-size: 200% 200%;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(255, 160, 0, 0.4),
+              0 0 0 1px rgba(255, 230, 150, 0.4) inset;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease), background-position 0.6s;
+}
+.name-card button:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 18px 40px rgba(255, 180, 0, 0.6),
+              0 0 0 2px rgba(255, 240, 180, 0.6) inset;
+  background-position: 100% 100%;
+}
+.name-card button:active { transform: scale(0.98); }
+
+/* ============ 2. NAME ZOOM + ROCKET ============ */
+.name-zoom {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+.name-zoom .zoom-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 6vw, 4rem);
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff3c4, var(--gold), var(--gold-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 60px rgba(255, 200, 80, 0.7);
+  padding: 0 20px;
+  text-align: center;
+  transform: scale(1);
+  transition: transform 1.2s var(--ease), opacity 1.2s var(--ease);
+  will-change: transform, opacity;
+}
+.name-zoom.active { opacity: 1; }
+.name-zoom.active .zoom-text { transform: scale(2.4); }
+
+/* Rocket */
+.rocket {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%) translateY(100vh);
+  font-size: 3.4rem;
+  z-index: 40;
+  pointer-events: none;
+  filter: drop-shadow(0 0 20px var(--gold-2));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+}
+.rocket .rocket-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 0 10px var(--gold-2);
+  letter-spacing: 1px;
+  white-space: nowrap;
+  padding: 2px 8px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255,215,100,0.4);
+  transform: scale(0.5);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.rocket .rocket-icon { font-size: 3.2rem; }
+
+.rocket.launch {
+  animation: rocketFly 1.4s cubic-bezier(0.5, 0, 0.6, 1) forwards;
+}
+.rocket.launch .rocket-name {
+  opacity: 1;
+  transform: scale(0.5);
+}
+@keyframes rocketFly {
+  0%   { transform: translateX(-50%) translateY(100vh) scale(1);   opacity: 1; filter: blur(0); }
+  55%  { transform: translateX(-50%) translateY(-8vh)  scale(2.2); opacity: 1; filter: blur(0); }
+  75%  { transform: translateX(-50%) translateY(-45vh) scale(3.6); opacity: 1; filter: blur(0.5px); }
+  100% { transform: translateX(-50%) translateY(-130vh) scale(5);  opacity: 0; filter: blur(3px); }
+}
+
+/* Sparkle trail on rocket */
+.rocket::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(255,200,80,0.9), rgba(255,140,0,0.5), transparent);
+  border-radius: 50%;
+  filter: blur(3px);
+  opacity: 0;
+}
+.rocket.launch::after {
+  animation: trail 1.4s ease-out forwards;
+}
+@keyframes trail {
+  0% { opacity: 0; height: 20px; }
+  40% { opacity: 1; height: 80px; }
+  100% { opacity: 0; height: 120px; }
+}
+
+/* White flash */
+.flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle, #fff 0%, #ffd966 40%, transparent 75%);
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+}
+.flash.fire {
+  animation: flashAnim 0.7s ease-out forwards;
+}
+@keyframes flashAnim {
+  0% { opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* ============ 3. GREETING REVEAL ============ */
+.greeting-reveal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  z-index: 25;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s var(--ease) 0.2s;
+}
+.greeting-reveal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.greeting-reveal h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.2rem, 7vw, 5rem);
+  font-weight: 700;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #fff3c4, var(--gold), var(--gold-2), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 80px rgba(255, 200, 80, 0.6);
+  margin-bottom: 16px;
+  line-height: 1.15;
+  animation: softPulse 3s ease-in-out infinite;
+}
+@keyframes softPulse {
+  0%, 100% { filter: drop-shadow(0 0 30px rgba(255,180,60,0.5)); }
+  50% { filter: drop-shadow(0 0 60px rgba(255,210,90,0.9)); }
+}
+.greeting-reveal p {
+  font-size: clamp(1rem, 2.5vw, 1.35rem);
+  color: #f0e2c4;
+  letter-spacing: 2px;
+  font-weight: 300;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+
+/* ============ 4. SLIDES ============ */
+.slides-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s var(--ease);
+}
+.slides-wrap.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.slide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(90%, 780px);
+  padding: 48px 44px;
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 40px;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.9),
+              0 0 0 1px rgba(255, 215, 100, 0.08) inset,
+              0 0 70px rgba(255, 170, 40, 0.12);
+  text-align: center;
+  color: var(--cream);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.94) translateY(30px);
+  filter: blur(6px);
+  transition: opacity 1.2s var(--ease),
+              transform 1.2s var(--ease),
+              filter 1.2s var(--ease);
+  pointer-events: none;
+  will-change: opacity, transform, filter;
+}
+.slide.active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) translateY(0);
+  filter: blur(0);
+  pointer-events: auto;
+  z-index: 5;
+}
+.slide .diya-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 25px var(--gold-2));
+  animation: floatGlow 2.6s ease-in-out infinite;
+}
+.slide h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 6vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #ffe9a8, var(--gold-2), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 50px rgba(255, 180, 60, 0.4);
+  margin-bottom: 14px;
+  line-height: 1.15;
+}
+.slide h2 {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
+  font-weight: 400;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 24px;
+  opacity: 0.9;
+}
+.slide p {
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  line-height: 1.7;
+  color: #ecdfc8;
+  font-weight: 300;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.slide .signature {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 215, 100, 0.25);
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  letter-spacing: 2px;
+  color: #d4bd91;
+}
+
+/* ============ DOTS ============ */
+.dots {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 14px;
+  padding: 10px 22px;
+  background: rgba(10, 15, 25, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  border-radius: 60px;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s var(--ease);
+}
+.dots.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(255, 220, 150, 0.25);
+  border: 1px solid rgba(255, 215, 100, 0.5);
+  cursor: pointer;
+  transition: all 0.4s var(--ease);
+}
+.dot.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: 0 0 15px var(--gold), 0 0 30px rgba(255,180,40,0.5);
+  transform: scale(1.5);
+}
+.dot:hover { background: var(--gold-2); transform: scale(1.25); }
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 640px) {
+  .name-card { padding: 36px 24px; border-radius: 26px; }
+  .slide { padding: 32px 22px; border-radius: 28px; }
+  .dots { bottom: 16px; gap: 10px; padding: 8px 16px; }
+  .dot { width: 9px; height: 9px; }
+  .sound-toggle { width: 44px; height: 44px; top: 16px; right: 16px; font-size: 1rem; }
+  .rocket .rocket-icon { font-size: 2.6rem; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.4s !important;
+  }
+  .rocket { display: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="fireworks"></canvas>
+
+<button class="sound-toggle" id="soundToggle" aria-label="Toggle sound">
+  <i class="fas fa-volume-up" id="soundIcon"></i>
+</button>
+
+<div class="stage">
+
+  <!-- 1. NAME INPUT CARD -->
+  <div class="name-card" id="nameCard">
+    <span class="diya">🪔</span>
+    <h2>Happy Diwali</h2>
+    <p class="hint">Whom shall we light up the sky for?</p>
+    <input type="text" id="nameInput" placeholder="Enter their name…" maxlength="24" autocomplete="off">
+    <button id="celebrateBtn">Celebrate 🎆</button>
+  </div>
+
+  <!-- 2. NAME ZOOM -->
+  <div class="name-zoom" id="nameZoom">
+    <div class="zoom-text" id="zoomText"></div>
+  </div>
+
+  <!-- ROCKET -->
+  <div class="rocket" id="rocket">
+    <div class="rocket-name" id="rocketName"></div>
+    <div class="rocket-icon">🚀</div>
+  </div>
+
+  <!-- FLASH -->
+  <div class="flash" id="flash"></div>
+
+  <!-- 3. GREETING REVEAL -->
+  <div class="greeting-reveal" id="greetingReveal">
+    <h1 id="greetingTitle">Happy Diwali!</h1>
+    <p id="greetingSub">May your life sparkle with endless light.</p>
+  </div>
+
+  <!-- 4. SLIDES -->
+  <div class="slides-wrap" id="slidesWrap">
+    <div class="slide" data-index="0">
+      <span class="diya-icon">🪔</span>
+      <h1 id="slideTitle1">Happy Diwali</h1>
+      <h2>To You &amp; Your Family</h2>
+      <p>May the divine light of Diwali illuminate your life with peace, prosperity, and endless joy.</p>
+      <div class="signature">✨ With warm wishes ✨</div>
+    </div>
+
+    <div class="slide" data-index="1">
+      <span class="diya-icon">🪔</span>
+      <h1>Shubh Deepavali</h1>
+      <h2>Celebrate the Victory of Light</h2>
+      <p>Let the diyas brighten your path and the fireworks echo the happiness in your heart.</p>
+      <div class="signature">🌟 May this festival bring you success 🌟</div>
+    </div>
+
+    <div class="slide" data-index="2">
+      <span class="diya-icon">🪔</span>
+      <h1>Health, Wealth &amp; Happiness</h1>
+      <h2>Wishing You Abundance</h2>
+      <p>May the coming year be filled with sweet moments and brilliant opportunities.</p>
+      <div class="signature">🎇 Sparkle with joy 🎇</div>
+    </div>
+
+    <div class="slide" data-index="3">
+      <span class="diya-icon">🪔</span>
+      <h1>From Our Team</h1>
+      <h2>Thank You for Being Part of Our Journey</h2>
+      <p>Wishing you a luminous and prosperous Diwali, filled with laughter and love.</p>
+      <div class="signature">✨ Warmest regards ✨</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- DOTS -->
+<div class="dots" id="dots">
+  <div class="dot active" data-index="0"></div>
+  <div class="dot" data-index="1"></div>
+  <div class="dot" data-index="2"></div>
+  <div class="dot" data-index="3"></div>
+</div>
+
+<script>
+/* =========================================================
+   AUDIO ENGINE (Web Audio API — no external files)
+   ========================================================= */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+let soundEnabled = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new AudioCtx();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playWhoosh() {
+  if (!soundEnabled || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.Q.value = 2;
+  filter.frequency.setValueAtTime(400, t);
+  filter.frequency.exponentialRampToValueAtTime(2500, t + 1.2);
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(180, t);
+  osc.frequency.exponentialRampToValueAtTime(1400, t + 1.2);
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.12, t + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+  osc.connect(filter).connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 1.35);
+
+  // Noise layer
+  const noise = audioCtx.createBufferSource();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 1.3, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+  noise.buffer = buffer;
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'highpass';
+  noiseFilter.frequency.value = 800;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.0001, t);
+  noiseGain.gain.exponentialRampToValueAtTime(0.08, t + 0.1);
+  noiseGain.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+  noise.connect(noiseFilter).connect(noiseGain).connect(audioCtx.destination);
+  noise.start(t); noise.stop(t + 1.3);
+}
+
+function playBoom() {
+  if (!soundEnabled || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  // Low thump
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(150, t);
+  osc.frequency.exponentialRampToValueAtTime(35, t + 0.5);
+  gain.gain.setValueAtTime(0.35, t);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.75);
+
+  // Crackle noise
+  const noise = audioCtx.createBufferSource();
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
+  noise.buffer = buffer;
+  const nf = audioCtx.createBiquadFilter();
+  nf.type = 'bandpass';
+  nf.frequency.value = 1200;
+  nf.Q.value = 1;
+  const ng = audioCtx.createGain();
+  ng.gain.setValueAtTime(0.18, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  noise.connect(nf).connect(ng).connect(audioCtx.destination);
+  noise.start(t); noise.stop(t + 0.5);
+}
+
+function playChime() {
+  if (!soundEnabled || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  [880, 1320, 1760].forEach((freq, i) => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t + i * 0.04);
+    g.gain.exponentialRampToValueAtTime(0.08, t + i * 0.04 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.04 + 0.8);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t + i * 0.04); o.stop(t + i * 0.04 + 0.85);
+  });
+}
+
+/* Sound toggle */
+const soundToggle = document.getElementById('soundToggle');
+const soundIcon = document.getElementById('soundIcon');
+soundToggle.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  soundToggle.classList.toggle('muted', !soundEnabled);
+  soundIcon.className = soundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+  if (soundEnabled && audioCtx) initAudio();
+});
+
+/* =========================================================
+   FIREWORKS CANVAS ENGINE
+   ========================================================= */
+const canvas = document.getElementById('fireworks');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const particles = [];
+const rockets = [];
+const palette = ['#ffd966', '#ffb347', '#ff8c42', '#ff4d8f', '#4dd0ff', '#ffffff', '#ffe9a8'];
+
+class Particle {
+  constructor(x, y, color, speed, angle) {
+    this.x = x;
+    this.y = y;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.life = 1;
+    this.decay = 0.008 + Math.random() * 0.012;
+    this.color = color;
+    this.size = 1.5 + Math.random() * 2;
+    this.gravity = 0.03;
+    this.drag = 0.985;
+    this.trail = [];
+  }
+  update() {
+    this.trail.push({ x: this.x, y: this.y });
+    if (this.trail.length > 6) this.trail.shift();
+    this.vx *= this.drag;
+    this.vy *= this.drag;
+    this.vy += this.gravity;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life -= this.decay;
+    this.size *= 0.992;
+  }
+  draw() {
+    if (this.life <= 0) return;
+    ctx.globalAlpha = Math.max(0, this.life);
+    // Trail
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      ctx.globalAlpha = (this.life) * (i / this.trail.length) * 0.5;
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, this.size * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Main particle
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.fillStyle = this.color;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+function burst(x, y, count = 140, big = false) {
+  const colorA = palette[Math.floor(Math.random() * palette.length)];
+  const colorB = palette[Math.floor(Math.random() * palette.length)];
+  const speed = big ? 9 : 6;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.2;
+    const s = speed * (0.4 + Math.random() * 0.7);
+    const color = Math.random() > 0.5 ? colorA : colorB;
+    particles.push(new Particle(x, y, color, s, angle));
+  }
+}
+
+/* Background fireworks scheduler */
+let lastAutoBurst = 0;
+function scheduleAutoBurst(now) {
+  if (now - lastAutoBurst > 1400 + Math.random() * 1800) {
+    lastAutoBurst = now;
+    const x = W * (0.15 + Math.random() * 0.7);
+    const y = H * (0.1 + Math.random() * 0.45);
+    burst(x, y, 90 + Math.floor(Math.random() * 40), false);
+    if (soundEnabled) playBoom();
+  }
+}
+
+function animate(now) {
+  // Soft fade trail
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(10, 12, 16, 0.18)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+
+  // Update & draw particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.update();
+    p.draw();
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+  ctx.globalAlpha = 1;
+
+  // Auto bursts
+  scheduleAutoBurst(now);
+
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+/* Initial gentle fireworks before user clicks (silent) */
+setTimeout(() => { burst(W * 0.3, H * 0.3, 70); }, 400);
+setTimeout(() => { burst(W * 0.7, H * 0.25, 70); }, 1000);
+setTimeout(() => { burst(W * 0.5, H * 0.4, 80); }, 1600);
+
+/* =========================================================
+   SEQUENCE CONTROLLER
+   ========================================================= */
+const nameCard = document.getElementById('nameCard');
+const nameInput = document.getElementById('nameInput');
+const celebrateBtn = document.getElementById('celebrateBtn');
+const nameZoom = document.getElementById('nameZoom');
+const zoomText = document.getElementById('zoomText');
+const rocket = document.getElementById('rocket');
+const rocketName = document.getElementById('rocketName');
+const flash = document.getElementById('flash');
+const greetingReveal = document.getElementById('greetingReveal');
+const greetingTitle = document.getElementById('greetingTitle');
+const slidesWrap = document.getElementById('slidesWrap');
+const dots = document.getElementById('dots');
+const slides = document.querySelectorAll('.slide');
+const dotEls = document.querySelectorAll('.dot');
+const slideTitle1 = document.getElementById('slideTitle1');
+
+let currentSlide = 0;
+let autoSlideTimer = null;
+let sequenceStarted = false;
+
+function startSequence() {
+  if (sequenceStarted) return;
+  const name = nameInput.value.trim();
+  if (!name) {
+    // gentle shake on empty
+    nameInput.style.animation = 'none';
+    nameInput.offsetHeight;
+    nameInput.style.animation = 'shake 0.4s';
+    nameInput.placeholder = 'Please enter a name ✨';
+    nameInput.focus();
+    return;
+  }
+  sequenceStarted = true;
+  initAudio();
+  playChime();
+
+  // Personalize slide 1 title
+  slideTitle1.textContent = `Happy Diwali, ${name}`;
+
+  // Step 1: hide card
+  nameCard.classList.add('hide');
+
+  // Step 2: show name zoom after card fades
+  setTimeout(() => {
+    zoomText.textContent = name;
+    nameZoom.classList.add('active');
+  }, 500);
+
+  // Step 3: attach to rocket & launch
+  setTimeout(() => {
+    rocketName.textContent = name;
+    rocket.classList.add('launch');
+    if (soundEnabled) playWhoosh();
+  }, 1750);
+
+  // Step 4: flash + burst at top
+  setTimeout(() => {
+    flash.classList.add('fire');
+    // Big burst at top center
+    burst(W / 2, H * 0.25, 240, true);
+    if (soundEnabled) playBoom();
+    // Secondary bursts around
+    setTimeout(() => { burst(W * 0.2, H * 0.35, 120, true); if (soundEnabled) playBoom(); }, 150);
+    setTimeout(() => { burst(W * 0.8, H * 0.3, 130, true); if (soundEnabled) playBoom(); }, 280);
+    setTimeout(() => { burst(W * 0.5, H * 0.15, 100, true); if (soundEnabled) playBoom(); }, 400);
+
+    // Hide zoom + rocket
+    nameZoom.classList.remove('active');
+    rocket.style.display = 'none';
+    flash.classList.remove('fire');
+  }, 3050);
+
+  // Step 5: reveal greeting
+  setTimeout(() => {
+    greetingTitle.textContent = `Happy Diwali, ${name}!`;
+    greetingReveal.classList.add('show');
+  }, 3250);
+
+  // Step 6: transition to slides
+  setTimeout(() => {
+    greetingReveal.classList.remove('show');
+    slidesWrap.classList.add('show');
+    dots.classList.add('show');
+    activateSlide(0, true);
+    startAutoSlide();
+  }, 5200);
+}
+
+celebrateBtn.addEventListener('click', startSequence);
+nameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startSequence();
+});
+
+/* Shake keyframe (injected) */
+const styleEl = document.createElement('style');
+styleEl.textContent = `
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  50% { transform: translateX(8px); }
+  75% { transform: translateX(-4px); }
+}`;
+document.head.appendChild(styleEl);
+
+/* =========================================================
+   SLIDE CONTROLLER
+   ========================================================= */
+function activateSlide(index, silent = false) {
+  if (index === currentSlide && !silent) return;
+  slides.forEach((s, i) => s.classList.toggle('active', i === index));
+  dotEls.forEach((d, i) => d.classList.toggle('active', i === index));
+  currentSlide = index;
+
+  if (!silent && soundEnabled) {
+    playChime();
+    // celebratory mini burst on slide change
+    burst(W * 0.5, H * 0.15, 60, false);
+  }
+}
+
+function startAutoSlide() {
+  clearInterval(autoSlideTimer);
+  autoSlideTimer = setInterval(() => {
+    const next = (currentSlide + 1) % slides.length;
+    activateSlide(next);
+  }, 5000);
+}
+
+dotEls.forEach(dot => {
+  dot.addEventListener('click', () => {
+    activateSlide(parseInt(dot.dataset.index));
+    clearInterval(autoSlideTimer);
+    startAutoSlide();
+  });
+});
+
+/* Keyboard arrows for slides */
+document.addEventListener('keydown', (e) => {
+  if (!slidesWrap.classList.contains('show')) return;
+  if (e.key === 'ArrowRight') {
+    activateSlide((currentSlide + 1) % slides.length);
+    clearInterval(autoSlideTimer); startAutoSlide();
+  } else if (e.key === 'ArrowLeft') {
+    activateSlide((currentSlide - 1 + slides.length) % slides.length);
+    clearInterval(autoSlideTimer); startAutoSlide();
+  }
+});
+
+/* =========================================================
+   INIT
+   ========================================================= */
+nameInput.focus();
+</script>
+</body>
+</html>
