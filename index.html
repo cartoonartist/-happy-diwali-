@@ -232,33 +232,35 @@ h2 .w{background:linear-gradient(180deg,#fff3c4,var(--gold) 45%,var(--deep));-we
 <script>
 (function(){
 'use strict';
-const $=id=>document.getElementById(id),rnd=(a,b)=>a+Math.random()*(b-a),at=(ms,fn)=>setTimeout(fn,ms);
-const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const SLIDE_MS=6000;
+const $ = id => document.getElementById(id);
+const rnd = (a,b) => a + Math.random()*(b-a);
+const at = (ms,fn) => setTimeout(fn,ms);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SLIDE_MS = 6000;
 
 /* ================= AUDIO ================= */
-let AC=null,M=null,REV=null,NB=null,PG=null,SA=null,muted=false,soundOn=false,greetHold=3400;
+let AC = null, M = null, REV = null, NB = null, PG = null, SA = null;
+let muted = false, soundOn = false, greetHold = 3400;
+let audioKilled = false;
 
 function silentWav(){
-  const n=4410,b=new ArrayBuffer(44+n*2),v=new DataView(b);
-  const w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
-  w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');
-  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
-  v.setUint32(24,44100,true);v.setUint32(28,88200,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
-  w(36,'data');v.setUint32(40,n*2,true);
+  const n = 4410, b = new ArrayBuffer(44 + n*2), v = new DataView(b);
+  const w = (o,t) => { for(let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36 + n*2, true); w(8,'WAVE'); w(12,'fmt ');
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,44100,true); v.setUint32(28,88200,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+  w(36,'data'); v.setUint32(40, n*2, true);
   return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));
 }
 
 function unlockIOS(){
   try{
-    if(!AC) return;
-    // Play a real (50ms) silent buffer to unlock iOS
+    if(!AC || audioKilled) return;
     const b = AC.createBuffer(1, 2205, 44100);
     const x = AC.createBufferSource();
     x.buffer = b;
     x.connect(AC.destination);
     x.start(AC.currentTime);
-    // Looping silent <audio> tag — the most reliable iOS unlock
     if(!SA){
       SA = new Audio(silentWav());
       SA.loop = true;
@@ -271,6 +273,7 @@ function unlockIOS(){
 }
 
 function ac(){
+  if(audioKilled) return null;
   try{
     if(!AC){
       const C = window.AudioContext || window.webkitAudioContext;
@@ -284,37 +287,57 @@ function ac(){
       M.connect(comp); comp.connect(PG); PG.connect(AC.destination);
       NB = AC.createBuffer(1, AC.sampleRate * 3 | 0, AC.sampleRate);
       const nd = NB.getChannelData(0);
-      for(let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      for(let i = 0; i < nd.length; i++) nd[i] = Math.random()*2 - 1;
       const L = AC.sampleRate * 1.4 | 0, ir = AC.createBuffer(2, L, AC.sampleRate);
       for(let c = 0; c < 2; c++){
         const d = ir.getChannelData(c);
-        for(let i = 0; i < L; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / L, 2.6);
+        for(let i = 0; i < L; i++) d[i] = (Math.random()*2 - 1)*Math.pow(1 - i/L, 2.6);
       }
       REV = AC.createConvolver(); REV.buffer = ir;
       const rg = AC.createGain(); rg.gain.value = .5;
       REV.connect(rg); rg.connect(M);
       AC.onstatechange = sync;
     }
-    // Kick the context — must happen inside a user gesture
     if(AC.state !== 'running') AC.resume().catch(()=>{});
     unlockIOS();
-    // Force soundOn here since we're inside a gesture
     soundOn = true;
     sync();
     return AC;
   }catch(e){ return null; }
 }
 
+/* FULL AUDIO TEARDOWN — stops the silent <audio> loop, kills nodes, closes context */
+function killAudio(){
+  audioKilled = true;
+  soundOn = false;
+  // 1) Stop the silent looping <audio> element (this is what keeps "music" alive)
+  if(SA){
+    try{
+      SA.pause();
+      SA.currentTime = 0;
+      SA.removeAttribute('src');
+      SA.load();
+    }catch(e){}
+    SA = null;
+  }
+  // 2) Stop the engine if still running
+  if(eng){ try{ eng.stop(); }catch(e){} eng = null; }
+  // 3) Close the AudioContext — this stops every scheduled node
+  if(AC){
+    try{ AC.close(); }catch(e){}
+    AC = null; M = null; REV = null; NB = null; PG = null;
+  }
+}
+
 function sync(){
   const run = !!AC && AC.state === 'running';
   if(run) soundOn = true;
   const b = $('snd');
-  // Only hide the button if audio is genuinely running AND we've launched
   if(b) b.hidden = run && soundOn && launched;
 }
 
 function out(n, wet){
-  if(!AC || !M) return;
+  if(!AC || !M || audioKilled) return;
   n.connect(M);
   if(wet && REV){
     const s = AC.createGain();
@@ -324,7 +347,7 @@ function out(n, wet){
 }
 
 function nv(t, dur, o){
-  if(!AC || !NB) return;
+  if(!AC || !NB || audioKilled) return;
   const s = AC.createBufferSource();
   s.buffer = NB; s.loop = true;
   const f = AC.createBiquadFilter();
@@ -333,38 +356,36 @@ function nv(t, dur, o){
   if(o.f1) f.frequency.exponentialRampToValueAtTime(o.f1, t + dur);
   const g = AC.createGain();
   g.gain.setValueAtTime(.0001, t);
-  g.gain.exponentialRampToValueAtTime(o.pk * 1.5, t + (o.att || .02));
+  g.gain.exponentialRampToValueAtTime(o.pk*1.5, t + (o.att || .02));
   g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   s.connect(f); f.connect(g); out(g, o.wet);
-  s.start(t, Math.random() * 2); s.stop(t + dur + .05);
+  s.start(t, Math.random()*2); s.stop(t + dur + .05);
 }
 
 function tn(t, f, dur, pk, o){
-  if(!AC) return;
+  if(!AC || audioKilled) return;
   o = o || {};
   const os = AC.createOscillator(), g = AC.createGain();
   os.type = o.type || 'sine';
   os.frequency.setValueAtTime(f, t);
   if(o.to) os.frequency.exponentialRampToValueAtTime(o.to, t + dur);
   g.gain.setValueAtTime(.0001, t);
-  g.gain.exponentialRampToValueAtTime(pk * 2.4, t + (o.att || .01));
+  g.gain.exponentialRampToValueAtTime(pk*2.4, t + (o.att || .01));
   g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   os.connect(g); out(g, o.wet);
   os.start(t); os.stop(t + dur + .05);
 }
 
 function bell(f, t, v){
-  if(!AC) return;
+  if(!AC || audioKilled) return;
   t = t || AC.currentTime; v = v || 1;
   [[1,.5],[2.01,.22],[3.98,.1],[5.4,.05]].forEach(p =>
-    tn(t, f * p[0], 2.4 / Math.pow(p[0], .4), .12 * v * p[1], {wet:.5})
-  );
+    tn(t, f*p[0], 2.4/Math.pow(p[0],.4), .12*v*p[1], {wet:.5}));
 }
-
-function chime(){ if(!AC) return; const t = AC.currentTime; [880,1108.7,1318.5].forEach((f,i)=>bell(f,t+i*.09,.7)); }
+function chime(){ if(!AC || audioKilled) return; const t = AC.currentTime; [880,1108.7,1318.5].forEach((f,i)=>bell(f,t+i*.09,.7)); }
 
 function boom(v, far){
-  if(!AC) return;
+  if(!AC || audioKilled) return;
   v = v || 1; const t = AC.currentTime;
   nv(t, .09, {type:'highpass', f0:2500, pk:.35*v, att:.002, wet:.2});
   nv(t, 1.1, {type:'lowpass', f0:far?900:1800, f1:200, pk:.5*v, att:.008, wet:.6});
@@ -372,28 +393,25 @@ function boom(v, far){
   for(let i = 0; i < 6; i++)
     nv(t + .15 + Math.random()*1.1, .05, {type:'highpass', f0:3500 + Math.random()*3000, pk:(.05 + Math.random()*.08)*v, att:.002, wet:.3});
 }
-
-function swoosh(up, v){ if(!AC) return; const t = AC.currentTime; v = v || 1; nv(t, .7, {type:'bandpass', f0:up?400:3000, f1:up?3500:350, Q:.9, pk:.22*v, att:.25, wet:.3}); }
-
-function whistle(){ if(!AC) return; const t = AC.currentTime; tn(t, 500, .45, .05, {to:2200, att:.05, wet:.3}); nv(t, .45, {type:'highpass', f0:3000, pk:.05, att:.1}); }
-
-function pluck(t, f, v){ if(!AC) return; tn(t, f, .35, .05*v, {type:'triangle', wet:.4}); }
-function thud(v){ if(!AC) return; v = v || 1; const t = AC.currentTime; tn(t, 140, .35, .3*v, {to:45, att:.005}); nv(t, .12, {type:'lowpass', f0:600, pk:.2*v, att:.004}); }
-function clunk(){ if(!AC) return; const t = AC.currentTime; tn(t, 320, .22, .2, {type:'square', to:120, att:.003}); tn(t + .02, 1900, .25, .08, {type:'triangle', wet:.4}); nv(t, .1, {type:'highpass', f0:2500, pk:.15, att:.002}); }
-function beep(f, t){ if(!AC) return; tn(t, f, .12, .08, {type:'square', att:.004}); }
+function swoosh(up, v){ if(!AC || audioKilled) return; const t = AC.currentTime; v = v || 1; nv(t, .7, {type:'bandpass', f0:up?400:3000, f1:up?3500:350, Q:.9, pk:.22*v, att:.25, wet:.3}); }
+function whistle(){ if(!AC || audioKilled) return; const t = AC.currentTime; tn(t, 500, .45, .05, {to:2200, att:.05, wet:.3}); nv(t, .45, {type:'highpass', f0:3000, pk:.05, att:.1}); }
+function pluck(t, f, v){ if(!AC || audioKilled) return; tn(t, f, .35, .05*v, {type:'triangle', wet:.4}); }
+function thud(v){ if(!AC || audioKilled) return; v = v || 1; const t = AC.currentTime; tn(t, 140, .35, .3*v, {to:45, att:.005}); nv(t, .12, {type:'lowpass', f0:600, pk:.2*v, att:.004}); }
+function clunk(){ if(!AC || audioKilled) return; const t = AC.currentTime; tn(t, 320, .22, .2, {type:'square', to:120, att:.003}); tn(t + .02, 1900, .25, .08, {type:'triangle', wet:.4}); nv(t, .1, {type:'highpass', f0:2500, pk:.15, att:.002}); }
+function beep(f, t){ if(!AC || audioKilled) return; tn(t, f, .12, .08, {type:'square', att:.004}); }
 
 function enterSnd(i){
-  if(!AC) return;
+  if(!AC || audioKilled) return;
   const t = AC.currentTime, sc = [523.25, 587.33, 659.25, 783.99, 880];
   swoosh(true, .8); thud(.5);
-  slides[i].querySelectorAll('.w').forEach((w, k) => {
+  slides[i].querySelectorAll('.w').forEach((w,k) => {
     if(k % 2 === 0) pluck(t + .5 + k*.07, sc[(k/2|0) % 5] * (1 + ((k/10|0) % 2)), .7);
   });
   nv(t, 4, {type:'bandpass', f0:700, f1:1100, Q:.6, pk:.03, att:1.5, wet:.5});
 }
 
 function pad(){
-  if(!AC) return;
+  if(!AC || audioKilled) return;
   const t = AC.currentTime;
   [[110,0],[164.8,5],[220,-5]].forEach(([f,d]) => {
     const o = AC.createOscillator(), g = AC.createGain(), lp = AC.createBiquadFilter();
@@ -406,7 +424,7 @@ function pad(){
 }
 
 function engineStart(){
-  if(!AC) return null;
+  if(!AC || audioKilled) return null;
   const t = AC.currentTime;
   const mk = (type, f) => {
     const s = AC.createBufferSource();
@@ -415,7 +433,7 @@ function engineStart(){
     fl.type = type; fl.frequency.value = f;
     const g = AC.createGain(); g.gain.value = .0001;
     s.connect(fl); fl.connect(g); out(g, .25);
-    s.start(t, Math.random() * 2);
+    s.start(t, Math.random()*2);
     return {s, fl, g};
   };
   const lo = mk('lowpass', 150), hi = mk('bandpass', 1800);
@@ -426,7 +444,7 @@ function engineStart(){
   nv(t, .9, {type:'highpass', f0:2000, pk:.18, att:.08, wet:.3});
   return {
     set(th, far, q){
-      if(!AC) return;
+      if(!AC || audioKilled) return;
       const n = AC.currentTime, m = x => Math.max(.0001, x);
       lo.g.gain.setTargetAtTime(m(.8*th*(1-far)), n, .12);
       lo.fl.frequency.setTargetAtTime(300 + th*900*(1-far*.6), n, .12);
@@ -436,7 +454,7 @@ function engineStart(){
       wg.gain.setTargetAtTime(m(.07*q*(1-far)), n, .15);
     },
     stop(){
-      if(!AC) return;
+      if(!AC || audioKilled) return;
       const n = AC.currentTime;
       lo.g.gain.setTargetAtTime(.0001, n, .15);
       hi.g.gain.setTargetAtTime(.0001, n, .15);
@@ -454,17 +472,17 @@ $('mute').onclick = function(){
   if(M) M.gain.value = muted ? 0 : .9;
 };
 
-function click(){ if(!AC) return; const t = AC.currentTime; tn(t, 1500, .07, .2, {to:700, type:'triangle'}); nv(t, .03, {type:'highpass', f0:3000, pk:.12, att:.002}); }
-function buzz(){ if(!AC) return; tn(AC.currentTime, 220, .3, .1, {type:'square', to:110}); }
+function click(){ if(!AC || audioKilled) return; const t = AC.currentTime; tn(t, 1500, .07, .2, {to:700, type:'triangle'}); nv(t, .03, {type:'highpass', f0:3000, pk:.12, att:.002}); }
+function buzz(){ if(!AC || audioKilled) return; tn(AC.currentTime, 220, .3, .1, {type:'square', to:110}); }
+function sparkle2(){ if(!AC || audioKilled) return; const t = AC.currentTime; [1046,1318,1568,2093].forEach((f,i)=>bell(f,t+i*.08,.6)); }
 
 ['pointerup','touchend','click'].forEach(ev => addEventListener(ev, () => ac(), true));
 addEventListener('pointerdown', e => { ac(); if(e.target.closest && e.target.closest('button')) click(); }, true);
 addEventListener('keydown', e => { ac(); if(e.key === 'Enter') click(); }, true);
 
-// Keep the context alive on every gesture anywhere
 ['pointerdown','touchstart','keydown','click'].forEach(ev => {
   document.addEventListener(ev, () => {
-    if(AC && AC.state === 'suspended') AC.resume().then(sync).catch(()=>{});
+    if(AC && AC.state === 'suspended' && !audioKilled) AC.resume().then(sync).catch(()=>{});
   }, {passive:true});
 });
 
@@ -503,7 +521,6 @@ function burst(x, y, n, big, o){
   }
   if(ps.length > 1400) ps.splice(0, ps.length - 1400);
 }
-
 function spark(x, y, sz){
   ps.push({x, y, px:x, py:y, vx:rnd(-.9,.9), vy:rnd(1,3.2), l:1, d:.035, c:COLS[Math.random()<.6?0:1], s:sz, t:true, g:.02});
 }
@@ -519,7 +536,7 @@ function frame(){
   for(let i = sm.length - 1; i >= 0; i--){
     const p = sm[i];
     p.x += p.vx; p.y += p.vy + cam.v*.35; p.r += p.vr; p.a -= .0035;
-    if(p.a <= 0){ sm.splice(i, 1); continue; }
+    if(p.a <= 0){ sm.splice(i,1); continue; }
     const g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
     g.addColorStop(0, 'rgba(190,180,170,' + p.a + ')');
     g.addColorStop(1, 'rgba(190,180,170,0)');
@@ -540,7 +557,7 @@ function frame(){
     p.vx *= .985; p.vy = p.vy*.985 + p.g;
     p.x += p.vx; p.y += p.vy + cam.v*.2;
     p.l -= p.d;
-    if(p.l <= 0){ ps.splice(i, 1); continue; }
+    if(p.l <= 0){ ps.splice(i,1); continue; }
     const al = p.t && Math.random() < .4 ? .15 : p.l;
     cx.strokeStyle = 'rgba(' + p.c + ',' + al + ')';
     cx.lineWidth = p.s;
@@ -550,20 +567,20 @@ function frame(){
 }
 
 function auto(){
-  const bx = W*rnd(.12, .88), by = H*rnd(.1, .5);
-  if(AC && AC.state === 'running') whistle();
-  at(AC && AC.state === 'running' ? 420 : 0, () => {
-    burst(bx, by, RM ? 60 : rnd(70, 120)|0);
-    if(AC && AC.state === 'running') boom(.45, true);
+  const bx = W*rnd(.12,.88), by = H*rnd(.1,.5);
+  if(AC && AC.state === 'running' && !audioKilled) whistle();
+  at(AC && AC.state === 'running' && !audioKilled ? 420 : 0, () => {
+    burst(bx, by, RM ? 60 : rnd(70,120)|0);
+    if(AC && AC.state === 'running' && !audioKilled) boom(.45, true);
   });
-  at(RM ? rnd(4000, 6000) : rnd(1500, 3000), auto);
+  at(RM ? rnd(4000,6000) : rnd(1500,3000), auto);
 }
 
 requestAnimationFrame(frame);
 at(900, auto);
 
 for(let i = 0; i < 8; i++){
-  const b = document.createElement('div'), s = rnd(24, 90);
+  const b = document.createElement('div'), s = rnd(24,90);
   b.className = 'bk';
   b.style.cssText = 'left:' + rnd(0,100) + 'vw;top:' + rnd(30,100) + 'vh;width:' + s + 'px;height:' + s + 'px;--d:' + rnd(9,16) + 's;--w:-' + rnd(0,12) + 's;--dx:' + rnd(-40,40) + 'px';
   document.body.appendChild(b);
@@ -575,11 +592,11 @@ const T_ATT = 1.8, T_IGN = 2.7, T_LIFT = 3.4, T_ACC = 5.0, T_END = 7.0;
 let R0 = 0, rkOn = false, eng = null, burned = false;
 
 function rocketTick(){
-  const t = (performance.now() - R0) / 1000, base = RS, stand = H*.83 - 116*base;
+  const t = (performance.now() - R0)/1000, base = RS, stand = H*.83 - 116*base;
   let cy = stand, s = base, th = 0, far = 0, q = 0, gOff = 0;
-  if(t >= T_IGN && !eng && AC && AC.state === 'running') eng = engineStart();
+  if(t >= T_IGN && !eng && AC && AC.state === 'running' && !audioKilled) eng = engineStart();
   if(t < T_IGN){}
-  else if(t < T_LIFT){ th = (t - T_IGN)/(T_LIFT - T_IGN)*.55 + .1; cy = stand + rnd(-1.2, 1.2); }
+  else if(t < T_LIFT){ th = (t - T_IGN)/(T_LIFT - T_IGN)*.55 + .1; cy = stand + rnd(-1.2,1.2); }
   else if(t < T_ACC){
     const p = (t - T_LIFT)/(T_ACC - T_LIFT);
     th = .65 + p*.35;
@@ -600,22 +617,21 @@ function rocketTick(){
     const ny = cy + 116*s, n = Math.round(2 + th*3);
     for(let i = 0; i < n; i++) spark(W/2 + rnd(-6,6)*s, ny, Math.max(.7, 2.6*s/base));
   }
-  if(t >= T_IGN && t < T_LIFT + 1.2 && Math.random() < .8) puff(W/2 + rnd(-60,60)*base, H*.83 + gOff, rnd(18, 34)*base);
+  if(t >= T_IGN && t < T_LIFT + 1.2 && Math.random() < .8) puff(W/2 + rnd(-60,60)*base, H*.83 + gOff, rnd(18,34)*base);
   if(eng){
     const nw = performance.now();
     if(!eng.ls || nw - eng.ls > 90){ eng.ls = nw; eng.set(th, far, q); }
   }
   if(t >= T_END && !burned){
     burned = true; rkOn = false; rk.style.opacity = 0;
-    if(eng) eng.stop();
+    if(eng){ eng.stop(); eng = null; }
     cam.v = 0; cam.a = .7;
     rocketBurst(W/2, cy);
   }
 }
 
 function rocketBurst(x, y){
-  // Make sure audio is unlocked before firing the burst sounds
-  if(AC && AC.state === 'suspended') AC.resume().catch(()=>{});
+  if(AC && AC.state === 'suspended' && !audioKilled) AC.resume().catch(()=>{});
   $('flash').classList.add('on');
   boom(1, false);
   burst(x, y, 70, true, {cols:[[255,255,255]], d:[.03,.05], k:.6});
@@ -634,7 +650,6 @@ function rocketBurst(x, y){
     burst(x + Math.cos(a)*W*.2, y + Math.sin(a)*H*.12 + H*.03, 110);
     boom(.35, true);
   });
-  // Show the greeting text box with a chime
   at(200, () => {
     $('greet').classList.add('show');
     chime();
@@ -723,7 +738,7 @@ const TR = [
     mk('gl');
     for(let i = 0; i < 20; i++)
       mk('spk', '✦', 'left:' + rnd(0,100) + 'vw;top:' + rnd(0,100) + 'vh;font-size:' + rnd(10,24) + 'px;animation-delay:' + i*.03 + 's');
-    if(AC){
+    if(AC && !audioKilled){
       const t = AC.currentTime;
       nv(t, 1.2, {type:'bandpass', f0:500, f1:5200, Q:1.1, pk:.28, att:.5, wet:.4});
       tn(t + .3, 900, .9, .05, {to:3200, wet:.5});
@@ -734,7 +749,7 @@ const TR = [
     const p = ['🌼','🏵️','🌸','🌺'];
     for(let i = 0; i < 36; i++)
       mk('tp', p[i%4], 'top:' + rnd(-5,100) + 'vh;font-size:' + rnd(20,44) + 'px;--y:' + rnd(-25,25) + 'vh;--d:' + rnd(.9,1.4) + 's;--w:' + rnd(0,.5) + 's');
-    if(AC){
+    if(AC && !audioKilled){
       const t = AC.currentTime;
       nv(t, 1.8, {type:'bandpass', f0:250, f1:1500, Q:.7, pk:.32, att:.7, wet:.5});
       [659,784,880,988].forEach((f,i) => bell(f, t + i*.2, .6));
@@ -749,7 +764,7 @@ const TR = [
   },
   function(){
     for(let i = 0; i < 9; i++) mk('ss', '', 'left:' + rnd(-10,60) + 'vw;top:' + rnd(-5,50) + 'vh;--w:' + i*.12 + 's');
-    if(AC){
+    if(AC && !audioKilled){
       const t = AC.currentTime;
       for(let i = 0; i < 9; i++) tn(t + i*.12, rnd(1400,2400), .5, .04, {to:rnd(3200,4800), wet:.5});
       nv(t, 1.2, {type:'highpass', f0:3000, pk:.12, att:.3, wet:.4});
@@ -758,7 +773,7 @@ const TR = [
 ];
 
 function fx(i){
-  if(!AC) return;
+  if(!AC || audioKilled) return;
   const t = AC.currentTime;
   if(i === 0) for(let k = 0; k < 5; k++) tn(t + 1.6 + k*.35, 1500 + k*220, .4, .07, {wet:.5});
   if(i === 1) for(let k = 0; k < 12; k++) tn(t + .5 + k*.12, 900 + k*110, .5, .035, {wet:.6});
@@ -779,16 +794,13 @@ function enter(i){
   [...dotsEl.children].forEach((d,k) => d.classList.toggle('on', k === i));
   fx(i); enterSnd(i);
 }
-
 function leave(i){
   swoosh(false, .8);
   const o = slides[i];
   o.classList.remove('on'); o.classList.add('out');
   at(1400, () => o.classList.remove('out'));
 }
-
 function sched(){ clearTimeout(timer); timer = setTimeout(() => go((cur + 1) % slides.length), SLIDE_MS); }
-
 function go(i){
   if(busy || i === cur) return;
   busy = true; clearTimeout(timer);
@@ -800,7 +812,6 @@ function go(i){
   at(750, () => enter(i));
   at(2000, () => { tr.innerHTML = ''; busy = false; sched(); });
 }
-
 function startSlides(){
   $('slides').classList.add('live');
   dotsEl.classList.add('live');
@@ -819,10 +830,8 @@ const SPECIAL = [
   {k:['arushi','aarushi','arushee','aarushee'], pw:['doctor'], msg:'happy diwali doctor Sahab 💉 aasha karta hu ki is diwali aap syllabus ki tension na kare'},
   {k:['sharita','sarita','shareeta'], pw:['bangan'], msg:'happy diwali bangan 🍆✨ hope this diwali brings you all the glow in the world 🤪😜'}
 ];
-
 const norm = x => String(x||'').normalize('NFKC').toLowerCase().replace(/[^a-z0-9]/g,'');
 const pnorm = x => String(x||'').normalize('NFKC').toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
-
 const SPECIAL_N = SPECIAL.map(x => ({
   k: x.k.map(norm).filter(Boolean),
   pw: [].concat(x.pw).map(pnorm).filter(Boolean),
@@ -848,7 +857,6 @@ function launch(name, custom){
     greetHold = 9000;
   }
 
-  // CRITICAL: unlock audio + resume the context
   ac();
   if(AC){
     try{ pad(); }catch(e){}
@@ -898,7 +906,7 @@ function launch(name, custom){
 
 $('form').addEventListener('submit', e => {
   e.preventDefault();
-  ac(); // CRITICAL: this is a user gesture — unlock audio here
+  ac();
   if(AC && AC.state === 'suspended') AC.resume().catch(()=>{});
 
   const name = $('name').value.trim();
@@ -963,11 +971,35 @@ $('snd').onclick = () => {
   }
 };
 
-function sparkle2(){
-  if(!AC) return;
-  const t = AC.currentTime;
-  [1046, 1318, 1568, 2093].forEach((f, i) => bell(f, t + i*.08, .6));
-}
+/* ================= RESET ON REVISIT / TAB CHANGE =================
+   - On bfcache restore (browser back button) → hard reset the page
+   - On tab hidden → kill audio (stops background music)
+   - On beforeunload/pagehide → kill audio
+   This ensures: (a) the name page shows again on every fresh visit,
+                 (b) no music keeps playing after the tab is closed/hidden.
+   ============================================================== */
+
+// Kill audio whenever the user leaves or hides the tab
+window.addEventListener('pagehide', killAudio);
+window.addEventListener('beforeunload', killAudio);
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden'){
+    // Tab backgrounded or closed — silence everything immediately
+    killAudio();
+  }
+});
+
+// When the browser restores the page from bfcache (back/forward), force a full reload
+// so the user always lands on the name-entry screen with a clean slate.
+window.addEventListener('pageshow', e => {
+  if(e.persisted){
+    // Page came from bfcache — reload for a fresh start
+    location.reload();
+  }
+});
+
+// Also reset on first load in case the user navigated back via history.pushState tricks
+if('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 })();
 </script>
